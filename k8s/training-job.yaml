@@ -53,6 +53,11 @@ spec:
         - name: trainer
           image: mlops-train:v1
           imagePullPolicy: IfNotPresent
+          # Note: with these CPU-only resource limits (2 cores), a full
+          # ResNet-18 training run on CIFAR-10 took ~1 hour for a single
+          # epoch. Using the lightweight CNN architecture (see configmap.yaml)
+          # completes an equivalent run in ~4 minutes — recommended for
+          # iteration/testing; switch to resnet18 for final accuracy runs.
           resources:
             requests:
               cpu: "2"
