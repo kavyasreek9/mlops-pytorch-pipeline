@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+
+# ---- Stage 1: dependency builder ----
+FROM python:3.11-slim AS base
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements/serve.txt .
+# Inference-only deps: no tensorboard, no training-time libraries.
+RUN pip install --no-cache-dir -r serve.txt
+
+# ---- Stage 2: serving runtime ----
+FROM python:3.11-slim AS serving
+WORKDIR /app
+
+# curl is needed by the HEALTHCHECK below
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=base /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=base /usr/local/bin /usr/local/bin
+
+COPY src/serve.py ./src/serve.py
+COPY src/model.py ./src/model.py
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    CHECKPOINT_PATH=/app/checkpoints/classifier_v1.pt
+
+# Create a non-root user and hand over ownership of the app dir
+RUN useradd --create-home --uid 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+CMD ["uvicorn", "src.serve:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -1,0 +1,80 @@
+# PersistentVolumeClaims for training data and checkpoints.
+# (Not broken into a separate file since the assignment's tree doesn't list one;
+# kubectl apply -f handles multi-document files fine.)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: training-data-pvc
+  namespace: ml-training
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: checkpoints-pvc
+  namespace: ml-training
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mlops-training-job
+  namespace: ml-training
+  labels:
+    app: mlops-training
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: mlops-training
+    spec:
+      restartPolicy: Never
+      # --- Bonus: GPU scheduling ---
+      # Uncomment nodeSelector/tolerations below if you have GPU nodes,
+      # and add the nvidia.com/gpu limit in the container resources.
+      # nodeSelector:
+      #   accelerator: nvidia-gpu
+      # tolerations:
+      #   - key: "nvidia.com/gpu"
+      #     operator: "Exists"
+      #     effect: "NoSchedule"
+      containers:
+        - name: trainer
+          image: mlops-train:v1
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: "2"
+              memory: "4Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+              # nvidia.com/gpu: 1   # bonus: uncomment for GPU training
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/configs
+            - name: data-volume
+              mountPath: /app/data
+            - name: checkpoints-volume
+              mountPath: /app/checkpoints
+      volumes:
+        - name: config-volume
+          configMap:
+            name: training-config
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: training-data-pvc
+        - name: checkpoints-volume
+          persistentVolumeClaim:
+            claimName: checkpoints-pvc

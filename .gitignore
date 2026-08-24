@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Data & model artifacts (never commit these)
+data/
+checkpoints/
+*.pt
+*.pth
+
+# Env / secrets
+.env
+*.env.local
+*.pem
+*.key
+secrets/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Kubernetes local overlays / kubeconfigs (if you keep any locally)
+kubeconfig*

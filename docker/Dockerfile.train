@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1
+
+# ---- Stage 1: dependency builder ----
+FROM python:3.11-slim AS base
+WORKDIR /app
+
+# Build deps needed to compile some Python wheels; removed from final layer
+# since this stage's pip cache is not carried into the training stage.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements/train.txt .
+RUN pip install --no-cache-dir -r train.txt
+
+# ---- Stage 2: training runtime ----
+FROM python:3.11-slim AS training
+WORKDIR /app
+
+# Copy only the installed site-packages from the base stage (no build tools,
+# no pip cache) to keep the runtime image lean.
+COPY --from=base /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=base /usr/local/bin /usr/local/bin
+
+COPY src/ ./src/
+COPY configs/ ./configs/
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Data and checkpoints are provided via mounted volumes / PVCs, not baked in.
+VOLUME ["/app/data", "/app/checkpoints"]
+
+ENTRYPOINT ["python", "src/train.py"]
