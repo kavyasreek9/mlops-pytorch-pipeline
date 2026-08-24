@@ -7,6 +7,10 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image
 from torchvision import transforms
 
+# Import via the "src" package path, not "from model import get_model".
+# The container runs `uvicorn src.serve:app` from /app, so Python resolves
+# this module as part of the src package — a bare "from model import"
+# raised ModuleNotFoundError: No module named 'model' at runtime.
 from src. model import get_model
 
 CHECKPOINT_PATH = os.environ.get("CHECKPOINT_PATH", "/app/checkpoints/classifier_v1.pt")
