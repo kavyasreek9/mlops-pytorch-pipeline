@@ -46,6 +46,9 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 5
           volumeMounts:
+            # Mounted read-only: serving pods only need to read the trained
+            # checkpoint, never write to it. This also allows multiple
+            # replicas to safely share the same PVC without write conflicts.
             - name: checkpoints-volume
               mountPath: /app/checkpoints
               readOnly: true
