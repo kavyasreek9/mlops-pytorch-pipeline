@@ -41,7 +41,10 @@ class SimpleCNN(nn.Module):
         x = self.features(x)
         return self.classifier(x)
 
-
+# pretrained=False by default: Kubernetes pods in this cluster have no outbound
+# DNS resolution, so downloading ImageNet weights from download.pytorch.org
+# fails. Training from scratch works fine since conv1/fc are replaced anyway
+# for CIFAR-10's 32x32 images and 10 classes.
 def get_resnet18(num_classes: int = 10, pretrained: bool = False) -> nn.Module:
     """Fine-tuned torchvision ResNet-18, adapted for small images and num_classes."""
     weights = models.ResNet18_Weights.DEFAULT if pretrained else None
